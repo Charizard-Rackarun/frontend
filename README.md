@@ -12,6 +12,7 @@ Frontend demonstrativo da VitrineIA, preparado para integração com um backend 
 npm install
 cp .env.example .env.local
 npm run dev
+
 ```
 
 Acesse http://localhost:3000.
