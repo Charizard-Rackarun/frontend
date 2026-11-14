@@ -1,41 +1,16 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-import { Check, Copy, Gift, Moon, QrCode, Sparkles, Ticket } from "lucide-react";
+import { Gift, Moon, Sparkles } from "lucide-react";
 import { api } from "@/lib/api";
-import { errorMessage, useFetch } from "@/lib/hooks";
+import { useFetch } from "@/lib/hooks";
 import { PageHeading } from "@/components/ui";
-import { Alert, Spinner } from "@/components/form";
+import { Alert } from "@/components/form";
+import { CuponsResgate, MaisQuestionarios } from "@/components/visitante";
 
 export default function RewardsPage() {
   const rewards = useFetch(() => api.getRewards());
   const evento = useFetch(() => api.getSexta13());
-  const [resgatando, setResgatando] = useState<string | null>(null);
-  const [resultado, setResultado] = useState<{ ok: boolean; msg: string; codigo?: string | null } | null>(null);
-  const [copiado, setCopiado] = useState(false);
-
-  async function resgatar(code: string) {
-    setResultado(null);
-    setResgatando(code);
-    try {
-      const r = await api.redeemCoupon(code);
-      setResultado({ ok: r.success, msg: r.message, codigo: r.resgateCodigo });
-      rewards.reload();
-    } catch (e) {
-      setResultado({ ok: false, msg: errorMessage(e) });
-    } finally {
-      setResgatando(null);
-    }
-  }
-
-  async function copiar(codigo: string) {
-    try {
-      await navigator.clipboard.writeText(codigo);
-      setCopiado(true);
-      setTimeout(() => setCopiado(false), 2000);
-    } catch { /* sem permissão de área de transferência */ }
-  }
 
   const data = rewards.data;
   if (rewards.error && !data) return <Alert>{rewards.error}</Alert>;
@@ -45,6 +20,8 @@ export default function RewardsPage() {
   const progress = data.nextLevelPoints > 0 ? Math.min(100, (data.points / data.nextLevelPoints) * 100) : 100;
   const faltam = Math.max(0, data.nextLevelPoints - data.points);
   const ev = evento.data;
+
+  const pesquisas = <MaisQuestionarios subtitulo="Cada pesquisa respondida vira pontos para trocar pelos cupons das lojas parceiras." />;
 
   return (
     <>
@@ -78,61 +55,24 @@ export default function RewardsPage() {
       </section>
 
       {semPontos && (
-        <div className="mb-6"><Alert kind="info">Você ainda não tem pontos. Responda um questionário de uma loja (use o link ou QR code que recebeu) para ganhar pontos e trocar por cupons.</Alert></div>
-      )}
-
-      {resultado && (
-        <div className="mb-6">
-          <Alert kind={resultado.ok ? "success" : "error"}>
-            {resultado.msg}
-            {resultado.ok && resultado.codigo && (
-              <button onClick={() => copiar(resultado.codigo!)} className="mt-2 flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 font-mono text-xs font-bold text-emerald-700">
-                {copiado ? <Check size={13} /> : <Copy size={13} />} {resultado.codigo}
-              </button>
-            )}
-          </Alert>
+        <div className="mb-8">
+          <Alert kind="info">Você ainda não tem pontos. Responda uma das pesquisas abaixo para ganhar pontos e trocar por cupons. Os cupons disponíveis aparecem logo depois.</Alert>
         </div>
       )}
 
-      <div className="mb-5 flex items-center justify-between">
-        <div><h2 className="font-bold text-ink">Cupons disponíveis</h2><p className="mt-1 text-xs text-slate-400">Troque seus pontos e apresente o código na loja</p></div>
-        <span className="pill bg-blue-50 text-brand">{data.coupons.length} ofertas</span>
-      </div>
+      {semPontos && <div className="mb-10">{pesquisas}</div>}
 
-      {data.coupons.length === 0 ? (
-        <div className="card px-6 py-12 text-center text-xs text-slate-400">Nenhum cupom disponível no momento. Volte em breve!</div>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          {data.coupons.map((c) => {
-            const semSaldo = c.costPoints !== undefined && data.points < c.costPoints;
-            return (
-              <article key={c.id} className="card overflow-hidden">
-                <div className="flex items-center justify-between bg-slate-50 px-5 py-4">
-                  <span className="pill bg-white text-slate-500">{c.category}</span>
-                  <Ticket size={18} className="text-brand" />
-                </div>
-                <div className="p-5">
-                  <div className="text-xs text-slate-400">{c.store}</div>
-                  <h3 className="mt-1 font-bold text-ink">{c.title}</h3>
-                  <div className="my-4 rounded-xl border border-dashed border-blue-200 bg-blue-50/60 p-4 text-center">
-                    <div className="text-3xl font-extrabold text-brand">{c.discount}</div>
-                    <div className="mt-1 text-[10px] text-slate-500">{c.description}</div>
-                  </div>
-                  <div className="flex items-center justify-between text-[10px] text-slate-400">
-                    <span>Válido até {c.expires}</span>
-                    {c.costPoints !== undefined && <span className="font-bold text-slate-600">{c.costPoints} pontos</span>}
-                  </div>
-                  <button onClick={() => resgatar(c.code)} disabled={resgatando !== null || semPontos || semSaldo} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-brand py-3 text-xs font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">
-                    {resgatando === c.code ? <Spinner /> : <QrCode size={15} />} {semPontos ? "Ganhe pontos para resgatar" : semSaldo ? "Pontos insuficientes" : "Resgatar cupom"}
-                  </button>
-                </div>
-              </article>
-            );
-          })}
+      <section>
+        <div className="mb-5 flex items-center justify-between gap-3">
+          <div><h2 className="font-bold text-ink">Cupons disponíveis</h2><p className="mt-1 text-xs text-slate-400">Troque seus pontos e apresente o código na loja</p></div>
+          <span className="pill shrink-0 bg-blue-50 text-brand">{data.coupons.length} ofertas</span>
         </div>
-      )}
+        <CuponsResgate rewards={data} onRedeemed={rewards.reload} />
+      </section>
 
-      {semPontos && <p className="mt-6 text-center text-[11px] text-slate-400">Tem um link de questionário? Abra-o no navegador para começar. <Link href="/login" className="font-bold text-brand">Sou lojista</Link></p>}
+      {!semPontos && <div className="mt-10">{pesquisas}</div>}
+
+      {semPontos && <p className="mt-8 text-center text-[11px] text-slate-400"><Link href="/login" className="font-bold text-brand">Sou lojista</Link></p>}
     </>
   );
 }

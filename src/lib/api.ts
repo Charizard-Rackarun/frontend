@@ -1,7 +1,8 @@
 import type {
   Campaign, CampanhaInput, ConsumerSegment, Cupom, CupomInput, DashboardData, Estabelecimento, EventoSexta13,
-  Opportunity, Questionario, QuestionarioInput, QuestionarioResumo, RegistroInput, ResgateResposta,
-  ResgateValidado, RespostaInput, RespostaResultado, ResultadosQuestionario, RewardSummary, Venda, VendaInput,
+  Opportunity, Questionario, QuestionarioInput, QuestionarioPublicoResumo, QuestionarioResumo, RegistroInput,
+  ResgateResposta, ResgateValidado, RespostaInput, RespostaResultado, ResultadosQuestionario, RewardSummary,
+  Venda, VendaInput,
 } from "@/types";
 
 export const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000/api/v1").replace(/\/$/, "");
@@ -123,6 +124,8 @@ export const api = {
   getResultados: (id: number) => request<ResultadosQuestionario>(`/questionarios/${id}/resultados`, { auth: "lojista" }),
 
   /* ---------- visitante (público) ---------- */
+  listQuestionariosPublicos: () =>
+    request<QuestionarioPublicoResumo[]>("/public/questionarios", { auth: "visitante" }),
   getQuestionarioPublico: (id: number) => request<Questionario>(`/public/questionarios/${id}`),
   async responder(id: number, dados: RespostaInput) {
     const resultado = await request<RespostaResultado>(`/public/questionarios/${id}/respostas`, {
