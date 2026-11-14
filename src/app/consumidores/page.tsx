@@ -1,28 +1,59 @@
 "use client";
-import { useEffect, useState } from "react";
-import { ArrowUpRight, Search, Users } from "lucide-react";
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
-import { api } from "@/lib/api";
-import type { ConsumerSegment } from "@/types";
-import { PageHeading, SectionTitle } from "@/components/ui";
 
-export default function ConsumersPage() {
-  const [segments,setSegments] = useState<ConsumerSegment[]>([]);
-  const [query,setQuery] = useState("");
-  useEffect(()=>{api.getConsumerSegments().then(setSegments)},[]);
-  const total=segments.reduce((a,b)=>a+b.count,0);
-  const filtered=segments.filter(s=>s.name.toLowerCase().includes(query.toLowerCase()));
-  return <>
-    <PageHeading eyebrow="INTELIGÊNCIA DE CONSUMO" title="Consumidores" description="Entenda os interesses e as tendências do público a partir de dados agregados."/>
-    <div className="mb-5 grid gap-4 sm:grid-cols-3">
-      <div className="card p-5"><div className="text-xs text-slate-500">Consumidores cadastrados</div><div className="mt-2 text-3xl font-extrabold">{total.toLocaleString("pt-BR")}</div><div className="mt-1 text-[10px] text-emerald-600">+14,6% no período</div></div>
-      <div className="card p-5"><div className="text-xs text-slate-500">Segmentos mapeados</div><div className="mt-2 text-3xl font-extrabold">{segments.length}</div><div className="mt-1 text-[10px] text-slate-400">Categorias de interesse</div></div>
-      <div className="card p-5"><div className="text-xs text-slate-500">Pesquisas respondidas</div><div className="mt-2 text-3xl font-extrabold">1.284</div><div className="mt-1 text-[10px] text-slate-400">Dados demonstrativos</div></div>
-    </div>
-    <div className="grid gap-5 lg:grid-cols-[1fr_1.2fr]">
-      <section className="card p-5"><SectionTitle title="Distribuição de interesses" subtitle="Participação por categoria"/><div className="h-[280px]"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={segments} dataKey="percentage" nameKey="name" innerRadius={65} outerRadius={105} paddingAngle={3}>{segments.map(s=><Cell key={s.id} fill={s.color}/>)}</Pie><Tooltip formatter={(v:any)=>`${v}%`}/></PieChart></ResponsiveContainer></div><p className="text-center text-[11px] text-slate-400">Preferências informadas voluntariamente · Dados fictícios</p></section>
-      <section className="card p-5"><SectionTitle title="Segmentos de consumidores" subtitle="Tamanho, participação e variação"/><div className="mb-4 relative"><Search size={15} className="absolute left-3 top-3 text-slate-400"/><input className="input pl-9" placeholder="Buscar segmento..." value={query} onChange={e=>setQuery(e.target.value)}/></div><div className="space-y-4">{filtered.map(s=><div key={s.id}><div className="mb-2 flex items-center justify-between"><div className="flex items-center gap-2 text-xs font-bold text-slate-700"><i className="h-2.5 w-2.5 rounded-full" style={{background:s.color}}/>{s.name}</div><div className="text-xs font-bold text-slate-700">{s.count.toLocaleString("pt-BR")}</div></div><div className="h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full" style={{width:`${s.percentage}%`,background:s.color}}/></div><div className="mt-1.5 flex justify-between text-[10px] text-slate-400"><span>{s.percentage}% do público</span><span className={s.trend>=0?"text-emerald-600":"text-rose-500"}>{s.trend>0?"+":""}{s.trend}% <ArrowUpRight className="inline" size={11}/></span></div><div className="mt-2 flex flex-wrap gap-1">{s.interests.map(i=><span key={i} className="rounded-md bg-slate-50 px-2 py-1 text-[10px] text-slate-500">{i}</span>)}</div></div>)}</div></section>
-    </div>
-    <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50/70 p-4 text-xs leading-relaxed text-blue-800"><strong>Privacidade em primeiro lugar:</strong> esta visão utiliza dados fictícios e agregados. Na versão real, os dados deverão ser tratados conforme a LGPD, com transparência sobre finalidades, bases legais e compartilhamentos.</div>
-  </>;
+import Link from "next/link";
+import { ArrowDownRight, ArrowUpRight, ShieldCheck, Users } from "lucide-react";
+import { api } from "@/lib/api";
+import { useFetch } from "@/lib/hooks";
+import { PageHeading } from "@/components/ui";
+import { Alert, EmptyState, PageSkeleton, btnPrimary } from "@/components/form";
+
+export default function ConsumidoresPage() {
+  const { data, error, loading } = useFetch(() => api.getConsumerSegments());
+
+  return (
+    <>
+      <PageHeading eyebrow="AUDIÊNCIA" title="Consumidores" description="Perfil agregado e anônimo dos visitantes, construído a partir das respostas aos questionários." />
+      {error && <Alert>{error}</Alert>}
+      {loading && !data && <PageSkeleton />}
+      {data && data.length === 0 && (
+        <EmptyState
+          icon={<ShieldCheck size={22} />}
+          title="Ainda não há dados suficientes"
+          action={<Link href="/questionarios" className={btnPrimary}>Ir para questionários</Link>}
+        >
+          Para proteger a privacidade dos visitantes (LGPD), um segmento só aparece quando reúne respostas suficientes. Publique um questionário com uma pergunta de “Interesses” e compartilhe o link.
+        </EmptyState>
+      )}
+      {data && data.length > 0 && (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {data.map((s) => {
+            const up = s.trend >= 0;
+            return (
+              <article key={s.id} className="card p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl text-white" style={{ background: s.color }}><Users size={18} /></span>
+                    <div><h3 className="font-bold text-ink">{s.name}</h3><div className="text-[11px] text-slate-400">{s.count.toLocaleString("pt-BR")} seleções</div></div>
+                  </div>
+                  <span className={`pill flex items-center gap-0.5 ${up ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-600"}`}>
+                    {up ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}{Math.abs(s.trend)}%
+                  </span>
+                </div>
+                <div className="mt-5">
+                  <div className="mb-1.5 flex justify-between text-xs"><span className="text-slate-400">Participação</span><strong className="text-slate-700">{s.percentage}%</strong></div>
+                  <div className="h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full" style={{ width: `${s.percentage}%`, background: s.color }} /></div>
+                </div>
+                {s.interests.length > 0 && (
+                  <div className="mt-4">
+                    <div className="mb-2 text-[10px] font-bold tracking-wider text-slate-400">TAMBÉM INTERESSADOS EM</div>
+                    <div className="flex flex-wrap gap-1.5">{s.interests.map((i) => <span key={i} className="pill bg-slate-50 text-slate-500">{i}</span>)}</div>
+                  </div>
+                )}
+              </article>
+            );
+          })}
+        </div>
+      )}
+    </>
+  );
 }
